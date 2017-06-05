@@ -1,0 +1,247 @@
+CREATE USER SAMPLE IDENTIFIED BY SAMPLE;
+
+GRANT DBA TO SAMPLE;
+
+CREATE TABLE EMPLOYEES 
+  ( EMP_ID NUMBER(6,0) CONSTRAINT EMP_ID_PK PRIMARY KEY ENABLE, 
+    EMP_NAME VARCHAR2(25) CONSTRAINT EMP_NAME_NN NOT NULL ENABLE,
+    PH_NUM VARCHAR2(15),
+    SAL NUMBER(10,3) CONSTRAINT SAL_CHK CHECK (SAL > 0),
+    DEPT_NO NUMBER(3,0)
+    );
+
+BEGIN
+
+INSERT INTO EMPLOYEES VALUES (1000, 'Steven', NULL , 1000 , 10);
+
+INSERT INTO EMPLOYEES VALUES (1001, 'Martin', NULL , 2000 , 10);
+
+INSERT INTO EMPLOYEES VALUES (1002, 'Kevin', NULL , 3000 , 20);
+
+INSERT INTO EMPLOYEES VALUES (1003, 'Nicky', NULL , 4000 , 20);
+
+INSERT INTO EMPLOYEES VALUES (1004, 'Lorie', NULL , 5000 , 30);
+
+INSERT INTO EMPLOYEES VALUES (1005, 'Lucky', NULL , 6000 , 30);
+
+INSERT INTO EMPLOYEES VALUES (1006, 'Sam', NULL , 7000 , 40);
+
+INSERT INTO EMPLOYEES VALUES (1007, 'Mike', NULL , 8000 , 40);
+
+INSERT INTO EMPLOYEES VALUES (1008, 'Michiele', NULL , 9000 , 50);
+
+INSERT INTO EMPLOYEES VALUES (1009, 'Kirr', NULL , 10000 , 50);
+
+END;
+/
+
+SELECT * FROM EMPLOYEES;
+
+--------------------------------------
+EMP_ID|EMP_NAME|PH_NUM | SAL | DEPT_NO
+--------------------------------------
+1000	Steven	(null)	1000	10
+1001	Martin	(null)	2000	10
+1002	Kevin	(null)	3000	20
+1003	Nicky	(null)	4000	20
+1004	Lorie	(null)	5000	30
+1005	Lucky	(null)	6000	30
+1006	Sam	(null)	7000	40
+1007	Mike	(null)	8000	40
+1008	Michiele(null)	9000	50
+1009	Kirr	(null)	10000	50
+
+---------------------------------------
+
+CREATE TABLE DEPARTMENTS 
+  ( DEPT_NO NUMBER(3,0) CONSTRAINT DEPT_NO_PK PRIMARY KEY ENABLE,
+    DEPT_NAME VARCHAR2(20) CONSTRAINT DEPT_NAME_NN NOT NULL
+    );
+
+
+BEGIN
+
+INSERT INTO DEPARTMENTS VALUES (10, 'SALES');
+
+INSERT INTO DEPARTMENTS VALUES (20, 'HR');
+
+INSERT INTO DEPARTMENTS VALUES (30, 'MARKETING');
+
+INSERT INTO DEPARTMENTS VALUES (40, 'TECH');
+
+INSERT INTO DEPARTMENTS VALUES (50, 'INFRA');
+
+END;
+
+/
+
+
+SELECT * FROM DEPARTMENTS; 
+
+--------------------
+DEPT_NO | DEPT_NAME
+--------------------
+10	SALES
+20	HR
+30	MARKETING
+40	TECH
+50	INFRA
+--------------------
+
+
+ALTER TABLE EMPLOYEES ADD 
+CONSTRAINT DEPT_NO_FK FOREIGN KEY ("DEPT_NO")
+REFERENCES DEPARTMENTS("DEPT_NO");
+
+
+
+create or replace TRIGGER TRG_CHK_DEPNO
+BEFORE INSERT OR UPDATE OF DEPT_NO ON EMPLOYEES
+FOR EACH ROW
+
+
+  DECLARE
+  CURSOR C1 IS 
+  SELECT DEPT_NO FROM DEPARTMENTS;
+  V_DEPTNO NUMBER(3);
+  V_TEMP NUMBER := 0 ;
+  
+  BEGIN 
+  OPEN C1;
+  LOOP
+   FETCH C1 INTO V_DEPTNO; 
+    IF V_DEPTNO = :NEW.DEPT_NO THEN 
+        V_TEMP := 0;
+      EXIT;
+    ELSE 
+      V_TEMP := 1;
+      
+
+    END IF;
+   EXIT WHEN C1%NOTFOUND;
+  END LOOP;
+  
+  IF V_TEMP = 1 THEN
+     raise_application_error( -20001, 'DEPT DOESNT EXIST ! ');
+    
+  END IF;
+  
+END;
+
+
+Trigger TRG_CHK_DEPNO compiled
+
+
+ALTER TABLE EMPLOYEES DISABLE CONSTRAINT DEPT_NO_FK; 
+
+Table EMPLOYEES altered.
+
+
+INSERT INTO EMPLOYEES VALUES (1010, 'Kirr', NULL , 10000 , 60);
+
+Error starting at line : 30 in command -
+INSERT INTO EMPLOYEES VALUES (1010, 'Kirr', NULL , 10000 , 60)
+Error report -
+SQL Error: ORA-20001: DEPT DOESNT EXIST !
+ORA-06512: at "SAMPLE.TRG_CHK_DEPNO", line 22
+ORA-04088: error during execution of trigger 'SAMPLE.TRG_CHK_DEPNO'
+
+
+
+INSERT INTO DEPARTMENTS VALUES (60, 'FIN');'
+
+
+1 row inserted.
+
+
+INSERT INTO EMPLOYEES VALUES (1010, 'Kirr', NULL , 10000 , 60);
+
+1 row inserted.
+
+
+
+
+
+
+
+ DROP TABLE EMP;
+ 
+ DELETE FROM EMP;
+ 
+ CREATE TABLE "EMP" 
+   (	"EMPID" VARCHAR2(10 BYTE), 
+	"EMPNAME" VARCHAR2(20 BYTE) NOT NULL ENABLE, 
+	"PHNNO" VARCHAR2(100 BYTE) NOT NULL ENABLE, 
+	 PRIMARY KEY ("EMPID")
+  );
+ 
+
+=================
+SEQUENCE CREATION
+=================
+DROP SEQUENCE EMPSEQ;
+CREATE SEQUENCE  EMPSEQ MINVALUE 1 MAXVALUE 30000 INCREMENT BY 1 START WITH 1  NOCYCLE ;
+
+================================
+--SCRIPT TO INSERT 20,000 RECORDS IN EMP TABLE 
+=================================================
+
+DECLARE
+     v_Counter BINARY_INTEGER := 1;
+BEGIN
+  LOOP
+  INSERT INTO EMP
+              VALUES (empSEQ.nextval,'EMP'||v_counter, ROUND(dbms_random.value(100000000,9999999999)) );
+  v_Counter := v_Counter + 1;
+  EXIT WHEN v_Counter > 20000;
+  END LOOP;
+  END;
+  /
+
+
+
+===================================
+PROCEDURE TO UPDATE DATA USING BULK COLLECT 
+============================================
+
+CREATE OR REPLACE PROCEDURE BULK_UPDTE
+IS 
+      CURSOR C_EMP
+      IS
+      SELECT EMPID,PHNNO FROM EMP;
+      
+      TYPE TAB_EMPNO IS TABLE OF EMP.EMPID%TYPE INDEX BY PLS_INTEGER;
+      TYPE TAB_PHNNO IS TABLE OF EMP.PHNNO%TYPE INDEX BY PLS_INTEGER;
+      V_empno  TAB_EMPNO;
+      V_phnno  TAB_PHNNO;
+
+      L_BULK_COLLECT_LIMIT     NUMBER := 10000;
+
+
+         BEGIN
+         OPEN C_EMP;
+         LOOP
+            FETCH C_EMP BULK COLLECT INTO V_empno, V_phnno LIMIT L_BULK_COLLECT_LIMIT;
+            
+            BEGIN
+               FORALL I
+                   IN V_empno.FIRST .. V_empno.LAST
+  
+                  UPDATE EMP
+                     SET PHNNO = '+1-' || V_phnno(i)
+                   WHERE EMPID = V_empno(i);
+               EXIT WHEN C_EMP%NOTFOUND;
+            END;
+         END LOOP;
+         CLOSE C_EMP;
+        -- COMMIT;
+
+END;
+
+
+------------------
+
+EXEC BULK_UPDTE;
+--0.222 SEC ---
+
+------------------
